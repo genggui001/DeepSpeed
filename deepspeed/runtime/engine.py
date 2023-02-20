@@ -2766,10 +2766,14 @@ class DeepSpeedEngine(Module):
 
         load_zero_checkpoint = self.zero_optimization() or self.bfloat16_enabled()
         if load_zero_checkpoint and load_path is not None:
-            success = self._load_zero_checkpoint(
-                load_dir,
-                tag,
-                load_optimizer_states=load_optimizer_states)
+            try:
+                success = self._load_zero_checkpoint(
+                    load_dir,
+                    tag,
+                    load_optimizer_states=load_optimizer_states)
+            except FileNotFoundError:
+                success = False
+                
             if not success:
                 self.optimizer._restore_from_bit16_weights()
 

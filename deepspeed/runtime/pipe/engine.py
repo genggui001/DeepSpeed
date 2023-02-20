@@ -243,8 +243,9 @@ class PipelineEngine(DeepSpeedEngine):
 
         weight_group_list = self.module.get_tied_weights_and_groups()
         for weight, group in weight_group_list:
-            grad = weight._hp_grad if self.bfloat16_enabled() else weight.grad
-            dist.all_reduce(grad, group=group)
+            grad = getattr(weight, "_hp_grad", None) if self.bfloat16_enabled() else getattr(weight, "grad", None)
+            if grad is not None:
+                dist.all_reduce(grad, group=group)
 
     def _exec_reduce_grads(self):
         self._force_grad_boundary = True
@@ -330,7 +331,7 @@ class PipelineEngine(DeepSpeedEngine):
                 self.global_steps):
                 self.reset_activation_shape()
 
-        if data_iter:
+        if data_iter is not None:
             self.set_dataiterator(data_iter)
 
         self.module.train()
