@@ -408,7 +408,11 @@ class MegatronSDLoader(SDLoaderBase):
         for key in client_sd.keys():
             value = client_sd[key]
 
-            if "attention.dense.weight" in key or "mlp.dense_4h_to_h.weight" in key:
+            if (
+                "attention.dense.weight" in key 
+                or "mlp.dense_4h_to_h.weight" in key 
+                or "mlp.down_proj.weight" in key
+            ):
                 assert value.shape[1] % num_to_split == 0
                 split_size = value.shape[1] // num_to_split
                 if quantize:
@@ -424,10 +428,22 @@ class MegatronSDLoader(SDLoaderBase):
                     num_to_split,
                     ckpt_offset,
                     ckpt_ver)
-            elif "mlp.dense_h_to_4h.weight" in key or "word_embeddings.weight" in key or "mlp.dense_h_to_4h.bias" in key or "final_linear.weight" in key:
+            elif (
+                "mlp.dense_h_to_4h.weight" in key 
+                or "mlp.gate_proj.weight" in key 
+                or "mlp.up_proj.weight" in key 
+                or "word_embeddings.weight" in key 
+                or "mlp.dense_h_to_4h.bias" in key 
+                or "final_linear.weight" in key
+                or "lm_head.weight" in key
+            ):
                 assert value.shape[0] % num_to_split == 0
                 split_size = value.shape[0] // num_to_split
-                if quantize and "mlp.dense_h_to_4h.weight" in key:
+                if quantize and (
+                    "mlp.dense_h_to_4h.weight" in key 
+                    or "mlp.gate_proj.weight" in key 
+                    or "mlp.up_proj.weight" in key 
+                ):
                     q_vals = quantizer.Quantize([value], quantize_bits, groups, key)
                     value = q_vals[0]
                 new_client_sd[key] = torch.split(value, split_size, dim=0)[ckpt_offset]
